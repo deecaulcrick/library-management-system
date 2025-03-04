@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,8 +13,9 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
-import Logo from "../../public/assets/logo.svg";
-import LogoText from "../../public/assets/logotext.svg";
+import Logo from "@/icons/Logo";
+import LogoText from "@/icons/LogoText";
+import Image from "next/image";
 
 const Sidebar = ({ className = "" }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -72,9 +74,10 @@ const Sidebar = ({ className = "" }) => {
             <div className=" flex items-center justify-center">
               <Logo className="h-10 w-10" />
             </div>
+
             {!collapsed && (
               <span className="ml-3 text-xl font-semibold">
-                <LogoText className="" />
+                <LogoText className="h-40 w-40" />
               </span>
             )}
           </div>
