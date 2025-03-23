@@ -17,8 +17,7 @@
 } */
 
 :root {
-
-  --background: oklch(1 0 0);
+  --background: #fffaf4;
 
   --foreground: oklch(0.145 0 0);
 
@@ -86,7 +85,6 @@
 }
 
 .dark {
-
   --background: oklch(0.145 0 0);
 
   --foreground: oklch(0.985 0 0);
@@ -153,7 +151,6 @@
 }
 
 @theme inline {
-
   --color-background: var(--background);
 
   --color-foreground: var(--foreground);
@@ -232,6 +229,30 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-foreground;
+  }
+  .h1 {
+    @apply tracking-tighter font-bold text-5xl;
+  }
+  .h2 {
+    @apply tracking-tighter font-bold text-2xl;
+  }
+  .h3 {
+    @apply tracking-tighter font-semibold text-xl;
+  }
+  p {
+    @apply tracking-tight;
+  }
+  .purple {
+    @apply bg-[#DBB8FF];
+  }
+  .orange {
+    @apply bg-[#FF5B2F];
+  }
+  .yellow {
+    @apply bg-[#F2BB05];
+  }
+  .gradient-text {
+    @apply bg-gradient-to-b from-black to-[#666666] text-transparent bg-clip-text;
   }
 }

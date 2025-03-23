@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Home,
   LibraryBig,
   BookOpen,
-  Settings,
+  BookmarkCheck,
   HelpCircle,
   Menu,
   X,
@@ -15,18 +15,24 @@ import {
 } from "lucide-react";
 import Logo from "@/icons/Logo";
 import LogoText from "@/icons/LogoText";
-import Image from "next/image";
 
-const Sidebar = ({ className = "" }) => {
+const Sidebar = ({ className = "", onToggle }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // Notify parent component when collapsed state changes
+    if (onToggle) {
+      onToggle(collapsed);
+    }
+  }, [collapsed, onToggle]);
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Catalog", href: "/dashboard/catalog", icon: LibraryBig },
     { name: "My Loans", href: "/dashboard/loans", icon: BookOpen },
-    { name: "My WishList", href: "/dashboard/wishlist", icon: Settings },
+    { name: "My WishList", href: "/dashboard/wishlist", icon: BookmarkCheck },
     { name: "Help", href: "/dashboard/help", icon: HelpCircle },
   ];
 
@@ -61,7 +67,7 @@ const Sidebar = ({ className = "" }) => {
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"} 
           ${collapsed ? "w-20" : "w-64"} 
           transform transition-all duration-300 ease-in-out
-          bg-[#222] text-white md:translate-x-0
+          bg-[#030303] text-white md:translate-x-0
           ${className}
         `}
       >
@@ -95,29 +101,27 @@ const Sidebar = ({ className = "" }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto py-4">
-          <nav className="space-y-1 px-2">
+          <nav className="space-y-1 px-5">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
                 className={`
-                  group flex items-center px-2 py-2 text-sm font-medium rounded-md
+                  group flex items-center px-3 py-3 text-sm font-medium rounded-full transition duration-300 ease-in-out
                   ${
                     isActive(item.href)
                       ? "bg-gray-900 text-white"
-                      : "text-gray-300 hover:bg-[#FFFAF4] hover:text-black"
+                      : "text-white hover:border"
                   }
                   ${collapsed ? "justify-center" : ""}
                 `}
               >
                 <item.icon
+                  size={16}
+                  strokeWidth={1}
                   className={`
                     flex-shrink-0 h-6 w-6
-                    ${
-                      isActive(item.href)
-                        ? "text-indigo-400"
-                        : "text-gray-400 group-hover:text-black"
-                    }
+                    ${isActive(item.href) ? "text-indigo-400" : "text-white"}
                   `}
                   aria-hidden="true"
                 />
@@ -127,18 +131,8 @@ const Sidebar = ({ className = "" }) => {
           </nav>
         </div>
 
-        <div className="border-t border-gray-700 p-4">
-          <div className={`flex ${collapsed ? "justify-center" : ""}`}>
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-full bg-gray-500" />
-            </div>
-            {!collapsed && (
-              <div className="ml-3">
-                <p className="text-sm font-medium text-white">John Doe</p>
-                <p className="text-xs text-gray-400">View Profile</p>
-              </div>
-            )}
-          </div>
+        <div className=" p-4">
+          <nav className="space-y-1 px-5"></nav>
         </div>
       </div>
     </>
