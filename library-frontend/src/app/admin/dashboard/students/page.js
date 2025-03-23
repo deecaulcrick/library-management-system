@@ -11,6 +11,14 @@ const page = () => {
       lastActive: "26th March 2025",
       image: "/assets/bookimg.png",
     },
+    {
+      id: "B12346",
+      name: "Dee Caulcrick",
+      email: "deecaul@gmail.com",
+      status: "Active",
+      lastActive: "29th March 2025",
+      image: "/assets/bookimg.png",
+    },
   ]);
 
   return (
@@ -65,13 +73,9 @@ const page = () => {
                 <td className="py-4 px-4">
                   <span
                     className={`px-3 py-1 text-sm rounded-full ${
-                      student.status === "Borrowed"
-                        ? "purple text-white"
-                        : student.status === "Overdue"
-                        ? "orange text-white"
-                        : student.status === "Returned"
-                        ? "yellow text-white"
-                        : ""
+                      student.status === "Active"
+                        ? "bg-black text-white"
+                        : "bg-white text-black"
                     }`}
                   >
                     {student.status}
