@@ -1,50 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PlusIcon, X, Pencil } from "lucide-react";
+import BookDetailsModal from "@/components/BookDetailsModal";
+import allBooks from "@/data/books";
 
 const loans = () => {
-  const [books, setBooks] = useState([
-    {
-      id: "B12345",
-      title: "Principles of Web Design",
-      author: "Sarah Johnson",
-      category: "Borrowed",
-      description: "",
-      availableCopies: 5,
-      status: "Available",
-      image: "/assets/bookimg.png",
-    },
-    {
-      id: "B12346",
-      title: "Concurrent Programming",
-      author: "Sarah Johnson",
-      category: "Overdue",
-      status: "Borrowed",
-      description: "",
-      availableCopies: 5,
-      image: "/assets/bookimg.png",
-    },
-    {
-      id: "B12347",
-      title: "Principles of Web Design",
-      author: "Sarah Johnson",
-      category: "Returned",
-      status: "Reserved",
-      availableCopies: 5,
-      description: "",
-      image: "/assets/bookimg.png",
-    },
-    {
-      id: "B12348",
-      title: "Principles of Web Design",
-      author: "Sarah Johnson",
-      category: "Borrowed",
-      status: "Available",
-      availableCopies: 1,
-      description: "",
-      image: "/assets/bookimg.png",
-    },
-  ]);
+  const [books, setBooks] = useState(allBooks);
 
   // State for modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,7 +45,7 @@ const loans = () => {
     e.preventDefault();
 
     // Generate a new ID
-    const newId = `B${parseInt(books[books.length - 1].id.slice(1)) + 1}`;
+    const newId = `B${parseInt(allBooks[allBooks.length - 1].id.slice(1)) + 1}`;
 
     // Add new book to the array
     const bookToAdd = {
@@ -92,7 +54,7 @@ const loans = () => {
       lastBorrowed: "N/A",
     };
 
-    setBooks([...books, bookToAdd]);
+    setBooks([...allBooks, bookToAdd]);
 
     // Close modal and reset form
     setIsModalOpen(false);
@@ -125,7 +87,7 @@ const loans = () => {
     e.preventDefault();
 
     // Update the book in the array
-    const updatedBooks = books.map((book) => {
+    const updatedBooks = allBooks.map((book) => {
       if (book.id === editingBook.id) {
         return {
           ...book,
@@ -146,6 +108,20 @@ const loans = () => {
     // Close modal and reset form
     setIsEditModalOpen(false);
     setEditingBook(null);
+  };
+
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+  const handleViewBook = (book) => {
+    setSelectedBook(book);
+    setIsViewModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsViewModalOpen(false);
+    // Optionally delay clearing the book data
+    setTimeout(() => setSelectedBook(null), 300); // After animation completes
   };
 
   return (
@@ -190,21 +166,9 @@ const loans = () => {
         <div className="w-64">
           <select className="w-full border border-gray-300 rounded-md py-2 px-3 appearance-none bg-white">
             <option value="">All Books</option>
-            <option value="FiArtificial Intelligencction">
-              Artificial Intelligence
-            </option>
-            <option value="Data Science">Data Science</option>
-            <option value="Cybersecurity">Cybersecurity</option>
-            <option value="Programming Language">Programming Language</option>
-            <option value="Web & Mobile Development">
-              Web & Mobile Development
-            </option>
-            <option value="Networking">Networking</option>
-            <option value="Hardware">Hardware</option>
-            <option value="Theoretical Computer Science">
-              Theoretical Computer Science
-            </option>
-            <option value="Project Management">Project Management</option>
+            <option value="">Available</option>
+            <option value="">Borrowed</option>
+            <option value="">Resrved </option>
           </select>
         </div>
       </div>
@@ -238,7 +202,7 @@ const loans = () => {
             </tr>
           </thead>
           <tbody>
-            {books.map((book) => (
+            {allBooks.map((book) => (
               <tr
                 key={book.id}
                 className="border border-gray-200 hover:bg-gray-100/30 transiton duration-300 ease-in-out"
@@ -279,7 +243,10 @@ const loans = () => {
                 <td className="py-4 px-4">{book.availableCopies}</td>
                 <td className="py-4 px-4">
                   <div className="flex space-x-3">
-                    <button className="text-gray-900 font-medium hover:text-gray-600">
+                    <button
+                      className="text-gray-900 font-medium hover:text-gray-600"
+                      onClick={() => handleViewBook(book)}
+                    >
                       View
                     </button>
                     <button
@@ -470,9 +437,7 @@ const loans = () => {
         <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold tracking-tighter">
-                Add New Book
-              </h2>
+              <h2 className="text-xl font-bold tracking-tighter">Edit Book</h2>
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -554,7 +519,7 @@ const loans = () => {
                   required
                 >
                   <option value="">Select a category</option>
-                  <option value="FiArtificial Intelligencction">
+                  <option value="Artificial Intelligence">
                     Artificial Intelligence
                   </option>
                   <option value="Data Science">Data Science</option>
@@ -625,12 +590,20 @@ const loans = () => {
                   type="submit"
                   className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
                 >
-                  Add Book
+                  Update Book
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+      {/* View book */}
+      {isViewModalOpen && (
+        <BookDetailsModal
+          isOpen={isViewModalOpen}
+          onClose={closeModal}
+          book={selectedBook}
+        />
       )}
     </section>
   );

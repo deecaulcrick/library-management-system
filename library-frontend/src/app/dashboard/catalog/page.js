@@ -1,8 +1,25 @@
+"use client";
+import { useState } from "react";
 import Link from "next/link";
 import Book from "@/components/Book";
 import { Search } from "lucide-react";
+import books from "@/data/books";
+import BookDetailsModal from "@/components/BookDetailsModal";
 
 const catalog = () => {
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+  const handleViewBook = (book) => {
+    setSelectedBook(book);
+    setIsViewModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsViewModalOpen(false);
+    // Optionally delay clearing the book data
+    setTimeout(() => setSelectedBook(null), 300); // After animation completes
+  };
   return (
     <section>
       <div>
@@ -26,17 +43,25 @@ const catalog = () => {
           </div>
         </div>
         <div className="flex flex-wrap mt-10 gap-6">
-          <Book />
-          <Book />
-          <Book />
-          <Book />
-          <Book />
-          <Book />
-          <Book />
-          <Book />
-          <Book />
+          {books.map((book) => (
+            <div onClick={() => handleViewBook(book)}>
+              <Book
+                title={book.title}
+                author={book.author}
+                image={book.image}
+                id={book.id}
+              />
+            </div>
+          ))}
         </div>
       </div>
+      {isViewModalOpen && (
+        <BookDetailsModal
+          isOpen={isViewModalOpen}
+          onClose={closeModal}
+          book={selectedBook}
+        />
+      )}
     </section>
   );
 };

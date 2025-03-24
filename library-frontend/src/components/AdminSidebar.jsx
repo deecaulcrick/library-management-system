@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Home,
   LibraryBig,
   BookOpen,
-  BookmarkCheck,
+  User,
   HelpCircle,
   Menu,
   X,
@@ -30,9 +31,13 @@ const AdminSidebar = ({ className = "", onToggle }) => {
 
   const navigation = [
     { name: "Dashboard", href: "/admin/dashboard", icon: Home },
-    { name: "Catalog", href: "/admin/dashboard/catalog", icon: LibraryBig },
+    { name: "Books", href: "/admin/dashboard/books", icon: LibraryBig },
     { name: "Loans", href: "/admin/dashboard/loans", icon: BookOpen },
-    { name: "Students", href: "/admin/dashboard/students", icon: BookmarkCheck },
+    {
+      name: "Students",
+      href: "/admin/dashboard/students",
+      icon: User,
+    },
     { name: "Help", href: "/dashboard/help", icon: HelpCircle },
   ];
 
