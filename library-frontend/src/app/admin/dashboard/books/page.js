@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { PlusIcon, X } from "lucide-react";
+import { PlusIcon, X, Pencil } from "lucide-react";
 
 const loans = () => {
   const [books, setBooks] = useState([
@@ -9,6 +9,7 @@ const loans = () => {
       title: "Principles of Web Design",
       author: "Sarah Johnson",
       category: "Borrowed",
+      description: "",
       availableCopies: 5,
       status: "Available",
       image: "/assets/bookimg.png",
@@ -19,6 +20,7 @@ const loans = () => {
       author: "Sarah Johnson",
       category: "Overdue",
       status: "Borrowed",
+      description: "",
       availableCopies: 5,
       image: "/assets/bookimg.png",
     },
@@ -29,6 +31,7 @@ const loans = () => {
       category: "Returned",
       status: "Reserved",
       availableCopies: 5,
+      description: "",
       image: "/assets/bookimg.png",
     },
     {
@@ -38,6 +41,7 @@ const loans = () => {
       category: "Borrowed",
       status: "Available",
       availableCopies: 1,
+      description: "",
       image: "/assets/bookimg.png",
     },
   ]);
@@ -54,9 +58,25 @@ const loans = () => {
     availableCopies: 1,
   });
 
+  // State for edit modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    author: "",
+    publishDate: "",
+    genre: "",
+    status: "",
+  });
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewBook((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
@@ -85,6 +105,47 @@ const loans = () => {
       description: "",
       availableCopies: 1,
     });
+  };
+
+  const openEditModal = (book) => {
+    setEditingBook(book);
+    setEditFormData({
+      title: book.title,
+      author: book.author,
+      category: book.category,
+      image: book.image,
+      status: book.status,
+      description: book.description,
+      availableCopies: book.availableCopies,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+
+    // Update the book in the array
+    const updatedBooks = books.map((book) => {
+      if (book.id === editingBook.id) {
+        return {
+          ...book,
+          title: editFormData.title,
+          author: editFormData.author,
+          category: editFormData.category,
+          image: editFormData.image,
+          status: editFormData.status,
+          description: editFormData.description,
+          availableCopies: editFormData.availableCopies,
+        };
+      }
+      return book;
+    });
+
+    setBooks(updatedBooks);
+
+    // Close modal and reset form
+    setIsEditModalOpen(false);
+    setEditingBook(null);
   };
 
   return (
@@ -128,16 +189,22 @@ const loans = () => {
         </div>
         <div className="w-64">
           <select className="w-full border border-gray-300 rounded-md py-2 px-3 appearance-none bg-white">
-            <option value="">Select a category</option>
-            <option value="Fiction">Artificial Intelligence</option>
-            <option value="Non-fiction">Date Science</option>
-            <option value="Fantasy">Cybersecurity</option>
-            <option value="Science Fiction">Programming languageL</option>
-            <option value="Mystery">Web & Mobile Development</option>
-            <option value="Romance">Netwroking</option>
-            <option value="Biography">Hardware</option>
-            <option value="History">Theoretical Computer Science</option>
-            <option value="Self-help">Project Management</option>
+            <option value="">All Books</option>
+            <option value="FiArtificial Intelligencction">
+              Artificial Intelligence
+            </option>
+            <option value="Data Science">Data Science</option>
+            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Programming Language">Programming Language</option>
+            <option value="Web & Mobile Development">
+              Web & Mobile Development
+            </option>
+            <option value="Networking">Networking</option>
+            <option value="Hardware">Hardware</option>
+            <option value="Theoretical Computer Science">
+              Theoretical Computer Science
+            </option>
+            <option value="Project Management">Project Management</option>
           </select>
         </div>
       </div>
@@ -211,9 +278,18 @@ const loans = () => {
                 </td>
                 <td className="py-4 px-4">{book.availableCopies}</td>
                 <td className="py-4 px-4">
-                  <button className="text-gray-900 font-medium hover:text-gray-600">
-                    View
-                  </button>
+                  <div className="flex space-x-3">
+                    <button className="text-gray-900 font-medium hover:text-gray-600">
+                      View
+                    </button>
+                    <button
+                      className="text-orange font-medium hover:text-blue-800 flex items-center"
+                      onClick={() => openEditModal(book)}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -310,15 +386,23 @@ const loans = () => {
                   required
                 >
                   <option value="">Select a category</option>
-                  <option value="Fiction">Artificial Intelligence</option>
-                  <option value="Non-fiction">Date Science</option>
-                  <option value="Fantasy">Cybersecurity</option>
-                  <option value="Science Fiction">Programming languageL</option>
-                  <option value="Mystery">Web & Mobile Development</option>
-                  <option value="Romance">Netwroking</option>
-                  <option value="Biography">Hardware</option>
-                  <option value="History">Theoretical Computer Science</option>
-                  <option value="Self-help">Project Management</option>
+                  <option value="FiArtificial Intelligencction">
+                    Artificial Intelligence
+                  </option>
+                  <option value="Data Science">Data Science</option>
+                  <option value="Cybersecurity">Cybersecurity</option>
+                  <option value="Programming Language">
+                    Programming Language
+                  </option>
+                  <option value="Web & Mobile Development">
+                    Web & Mobile Development
+                  </option>
+                  <option value="Networking">Networking</option>
+                  <option value="Hardware">Hardware</option>
+                  <option value="Theoretical Computer Science">
+                    Theoretical Computer Science
+                  </option>
+                  <option value="Project Management">Project Management</option>
                 </select>
               </div>
 
@@ -365,6 +449,174 @@ const loans = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+                >
+                  Add Book
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Book Modal */}
+      {isEditModalOpen && editingBook && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold tracking-tighter">
+                Add New Book
+              </h2>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Title
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={editFormData.title}
+                  onChange={handleEditInputChange}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label
+                  htmlFor="author"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Author
+                </label>
+                <input
+                  type="text"
+                  id="author"
+                  name="author"
+                  value={editFormData.author}
+                  onChange={handleEditInputChange}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Description
+                </label>
+                <textarea
+                  type="text"
+                  id="description"
+                  name="description"
+                  rows="4"
+                  value={editFormData.description}
+                  onChange={handleEditInputChange}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  placeholder="About the book. . ."
+                  required
+                ></textarea>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  htmlFor="category"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Category
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  value={editFormData.category}
+                  onChange={handleEditInputChange}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  <option value="FiArtificial Intelligencction">
+                    Artificial Intelligence
+                  </option>
+                  <option value="Data Science">Data Science</option>
+                  <option value="Cybersecurity">Cybersecurity</option>
+                  <option value="Programming Language">
+                    Programming Language
+                  </option>
+                  <option value="Web & Mobile Development">
+                    Web & Mobile Development
+                  </option>
+                  <option value="Networking">Networking</option>
+                  <option value="Hardware">Hardware</option>
+                  <option value="Theoretical Computer Science">
+                    Theoretical Computer Science
+                  </option>
+                  <option value="Project Management">Project Management</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label
+                  htmlFor="status"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Status
+                </label>
+                <select
+                  id="status"
+                  name="status"
+                  value={editFormData.status}
+                  onChange={handleEditInputChange}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  required
+                >
+                  <option value="Available">Available</option>
+                  <option value="Borrowed">Borrowed</option>
+                  <option value="Reserved">Reserved</option>
+                  <option value="Out of circulation">Out of circulation</option>
+                </select>
+              </div>
+              <div className="mb-6">
+                <label
+                  htmlFor="copies"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Available Copies
+                </label>
+                <input
+                  type="number"
+                  id="copies"
+                  name="copies"
+                  value={editFormData.availableCopies}
+                  onChange={handleEditInputChange}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
