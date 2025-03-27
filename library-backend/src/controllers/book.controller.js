@@ -130,6 +130,7 @@ exports.createBook = async (req, res) => {
       publisher,
       totalCopies,
       shelfLocation,
+      image,
     } = req.body;
 
     // Check if book with same ISBN already exists
@@ -152,6 +153,7 @@ exports.createBook = async (req, res) => {
       totalCopies: totalCopies || 1,
       availableCopies: totalCopies || 1,
       shelfLocation,
+      image,
     });
 
     res.status(201).json({
@@ -188,6 +190,7 @@ exports.updateBook = async (req, res) => {
       publisher,
       totalCopies,
       shelfLocation,
+      image,
     } = req.body;
 
     // Check if updating ISBN and if it already exists
@@ -212,13 +215,14 @@ exports.updateBook = async (req, res) => {
       title: title || book.title,
       author: author || book.author,
       isbn: isbn || book.isbn,
-      category: category || book.category,
-      description: description || book.description,
+      category: category !== undefined ? category : book.category,
+      description: description !== undefined ? description : book.description,
       publishedDate: publishedDate || book.publishedDate,
       publisher: publisher || book.publisher,
       totalCopies: totalCopies || book.totalCopies,
       availableCopies: availableCopies,
-      shelfLocation: shelfLocation || book.shelfLocation,
+      shelfLocation: shelfLocation !== undefined ? shelfLocation : book.shelfLocation,
+      image: image !== undefined ? image : book.image,
     });
 
     res.status(200).json({

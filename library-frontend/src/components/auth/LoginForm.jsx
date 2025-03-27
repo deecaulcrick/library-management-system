@@ -1,114 +1,129 @@
 "use client";
 
-import { useLogin } from "@/hooks/auth/useLogin";
+import { useLogin, useIsAuthenticated } from "@/hooks";
+import { loginSchema } from "@/schemas/auth.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { FormInput, FormPassword } from "@/components/form";
 import LogoText from "@/icons/LogoText";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 const LoginForm = () => {
+  const router = useRouter();
+  const { isAuthenticated, isInitialized } = useIsAuthenticated();
+  
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
   } = useForm({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const { mutate: login, isLoading, isError, error, isSuccess } = useLogin();
+  const { mutate: login, isLoading, isError, error } = useLogin();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isInitialized && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isInitialized, isAuthenticated, router]);
 
   const onSubmit = (data) => {
     login(data);
   };
 
   return (
-    <div className="w-full  bg-white rounded-lg">
+    <div className="w-full bg-white rounded-lg">
       <LogoText fill="black" />
       <div className="mt-20">
         <h2 className="text-6xl font-bold mb-6 tracking-tight">Sign in.</h2>
-        <p>Lorem ipsum odor amet, consectetuer adipiscing elit.</p>
+        <p>Welcome back! Please enter your credentials to access your account.</p>
       </div>
-      {isSuccess && (
-        <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
-          Login successful!
-        </div>
-      )}
 
       {isError && (
-        <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
-          {error?.response?.data?.message || error.message || "Login failed"}
+        <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+          {error?.response?.data?.message || "Invalid credentials"}
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="mt-10">
-          {/* <label htmlFor="email" className="block text-sm font-medium mb-1">
-            Email
-          </label> */}
-          <input
-            id="email"
-            type="email"
-            placeholder="Email address"
-            className={`w-full px-3 py-3 border rounded-lg bg-[#E6E6E6]/60 ${
-              errors.email ? "border-red-500" : "border-gray-300"
-            }`}
-            {...register("email", {
-              required: "Email is required",
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: "Please enter a valid email",
-              },
-            })}
-          />
-          {errors.email && (
-            <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
-          )}
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
+        <FormInput
+          id="email"
+          name="email"
+          type="email"
+          label="Email"
+          placeholder="Your email address"
+          register={register}
+          errors={errors}
+        />
+
+        <FormPassword
+          id="password"
+          name="password"
+          label="Password"
+          placeholder="Your password"
+          register={register}
+          errors={errors}
+        />
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              name="remember-me"
+              type="checkbox"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+              Remember me
+            </label>
+          </div>
+
+          <div className="text-sm">
+            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+              Forgot your password?
+            </a>
+          </div>
         </div>
 
         <div>
-          {/* <label htmlFor="password" className="block text-sm font-medium mb-1">
-            Password
-          </label> */}
-          <input
-            id="password"
-            type="password"
-            placeholder="Password"
-            className={`w-full px-3 py-3 border rounded-lg bg-[#E6E6E6]/60 ${
-              errors.password ? "border-red-500" : "border-gray-300"
-            }`}
-            {...register("password", {
-              required: "Password is required",
-              minLength: {
-                value: 6,
-                message: "Password must be at least 6 characters",
-              },
-            })}
-          />
-          {errors.password && (
-            <p className="mt-1 text-sm text-red-500">
-              {errors.password.message}
-            </p>
-          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "Signing in..." : "Sign in"}
+          </button>
+        </div>
+      </form>
+
+      <div className="mt-6">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or</span>
+          </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full h-[60px] py-2 px-4 bg-black text-white rounded-2xl font-medium hover:bg-[#FF5B2F] focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 transition duration-300 ease-in-out"
-        >
-          {isLoading ? "Logging in..." : "Sign in"}
-        </button>
-      </form>
-      <p className="mt-4">
-        Don’t have an account yet?{" "}
-        <span className="text-[#FF5B2F] underline">
-          <Link href="/signup">Create an account</Link>
-        </span>
-      </p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              Register now
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

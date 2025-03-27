@@ -35,6 +35,7 @@ router.post(
       .isInt({ min: 1 })
       .withMessage("Total copies must be at least 1"),
     body("shelfLocation").optional(),
+    body("image").optional().isURL().withMessage("Image must be a valid URL"),
   ],
   bookController.createBook
 );
