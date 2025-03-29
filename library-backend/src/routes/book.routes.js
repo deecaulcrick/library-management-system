@@ -18,7 +18,6 @@ router.get("/:id", bookController.getBookById);
 router.post(
   "/",
   verifyToken,
-  isStaffOrAdmin,
   [
     body("title").notEmpty().withMessage("Title is required"),
     body("author").notEmpty().withMessage("Author is required"),
@@ -41,17 +40,12 @@ router.post(
 );
 
 // Update a book (protected route - staff or admin only)
-router.put("/:id", verifyToken, isStaffOrAdmin, bookController.updateBook);
+router.put("/:id", verifyToken, bookController.updateBook);
 
 // Delete a book (protected route - staff or admin only)
-router.delete("/:id", verifyToken, isStaffOrAdmin, bookController.deleteBook);
+router.delete("/:id", verifyToken, bookController.deleteBook);
 
 // Get book loan history (protected route - staff or admin only)
-router.get(
-  "/:id/loans",
-  verifyToken,
-  isStaffOrAdmin,
-  bookController.getBookLoanHistory
-);
+router.get("/:id/loans", verifyToken, bookController.getBookLoanHistory);
 
 module.exports = router;

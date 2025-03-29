@@ -87,25 +87,34 @@ exports.getDashboardStats = async (req, res) => {
       include: [
         {
           model: Book,
-          attributes: ["id", "title", "author", "category"],
+          attributes: ["id", "title", "author", "category", "image"],
         },
       ],
     });
 
     // Get monthly loan statistics for the current year
     const currentYear = new Date().getFullYear();
-    const monthlyLoanStats = await Loan.findAll({
-      attributes: [
-        [sequelize.fn("MONTH", sequelize.col("borrowDate")), "month"],
-        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
-      ],
-      where: sequelize.where(
-        sequelize.fn("YEAR", sequelize.col("borrowDate")),
-        currentYear
-      ),
-      group: [sequelize.fn("MONTH", sequelize.col("borrowDate"))],
-      order: [[sequelize.literal("month"), "ASC"]],
-    });
+    let monthlyLoanStats = [];
+
+    try {
+      // Using SQLite-compatible date functions (strftime)
+      monthlyLoanStats = await Loan.findAll({
+        attributes: [
+          [sequelize.fn("strftime", "%m", sequelize.col("borrowDate")), "month"],
+          [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        ],
+        where: sequelize.where(
+          sequelize.fn("strftime", "%Y", sequelize.col("borrowDate")),
+          currentYear.toString()
+        ),
+        group: [sequelize.fn("strftime", "%m", sequelize.col("borrowDate"))],
+        order: [[sequelize.literal("month"), "ASC"]],
+      });
+    } catch (error) {
+      console.error("Error getting monthly loan stats:", error);
+      // Provide empty array if there's an error
+      monthlyLoanStats = [];
+    }
 
     res.status(200).json({
       counts: {
@@ -126,12 +135,10 @@ exports.getDashboardStats = async (req, res) => {
     });
   } catch (error) {
     console.error("Dashboard stats error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error retrieving dashboard statistics",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error retrieving dashboard statistics",
+      error: error.message,
+    });
   }
 };
 
@@ -160,7 +167,7 @@ exports.getBookStats = async (req, res) => {
       include: [
         {
           model: Book,
-          attributes: ["id", "title", "author", "category", "isbn"],
+          attributes: ["id", "title", "author", "category", "isbn", "image"],
         },
       ],
     });
@@ -237,12 +244,10 @@ exports.getBookStats = async (req, res) => {
     });
   } catch (error) {
     console.error("Book stats error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error retrieving book statistics",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error retrieving book statistics",
+      error: error.message,
+    });
   }
 };
 
@@ -314,19 +319,149 @@ exports.getUserStats = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
+    // Get monthly user registration stats for the current year with SQLite-compatible functions
+    let monthlyUserActivity = [];
+    try {
+      const currentYear = new Date().getFullYear();
+      monthlyUserActivity = await User.findAll({
+        attributes: [
+          [sequelize.fn("strftime", "%m", sequelize.col("createdAt")), "month"],
+          [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        ],
+        where: sequelize.where(
+          sequelize.fn("strftime", "%Y", sequelize.col("createdAt")),
+          currentYear.toString()
+        ),
+        group: [sequelize.fn("strftime", "%m", sequelize.col("createdAt"))],
+        order: [[sequelize.literal("month"), "ASC"]],
+      });
+    } catch (error) {
+      console.error("Error getting monthly user stats:", error);
+      monthlyUserActivity = [];
+    }
+
+    // Count users with overdue books
+    const usersWithOverdueBooks = await User.count({
+      include: [
+        {
+          model: Loan,
+          where: { status: "overdue" },
+          required: true,
+        },
+      ],
+      distinct: true,
+    });
+
+    // Get most active user
+    const mostActiveUser = mostActiveUsers.length > 0 
+      ? {
+          id: mostActiveUsers[0].User.id,
+          name: mostActiveUsers[0].User.name,
+          email: mostActiveUsers[0].User.email,
+          loanCount: mostActiveUsers[0].dataValues.loanCount
+        }
+      : null;
+
+    // Count active users (those who have borrowed at least one book)
+    const activeUsers = await User.count({
+      include: [
+        {
+          model: Loan,
+          required: true,
+        },
+      ],
+      distinct: true,
+    });
+
     res.status(200).json({
       usersByRole,
       mostActiveUsers,
       usersWithOverdueLoans,
       newUsers,
+      monthlyUserActivity,
+      usersWithOverdueBooks,
+      mostActiveUser,
+      activeUsers
     });
   } catch (error) {
     console.error("User stats error:", error);
+    res.status(500).json({
+      message: "Error retrieving user statistics",
+      error: error.message,
+    });
+  }
+};
+
+// Get dashboard statistics for a specific user
+exports.getUserDashboardStats = async (req, res) => {
+  try {
+    const userId = req.params.userId || req.user.id;
+
+    // Get user's active loans
+    const activeLoans = await Loan.findAll({
+      where: {
+        userId,
+        status: {
+          [Op.in]: ["borrowed", "overdue"],
+        },
+      },
+      include: [
+        {
+          model: Book,
+          attributes: ["id", "title", "author", "category", "isbn", "image"],
+        },
+      ],
+      order: [["borrowDate", "DESC"]],
+    });
+
+    // Get user's overdue books
+    const overdueLoans = activeLoans.filter(
+      (loan) => loan.status === "overdue"
+    );
+
+    // Get user's loan history (completed loans)
+    const completedLoans = await Loan.count({
+      where: {
+        userId,
+        status: "returned",
+      },
+    });
+
+    // Get user's pending reservations
+    const pendingReservations = await Reservation.count({
+      where: {
+        userId,
+        status: "pending",
+      },
+    });
+
+    // Calculate user statistics
+    const userStats = {
+      activeBorrows: activeLoans.length,
+      overdue: overdueLoans.length,
+      returned: completedLoans,
+      totalActivity: activeLoans.length + completedLoans,
+      pendingReservations,
+      recentLoans: activeLoans
+        .map((loan) => ({
+          id: loan.id,
+          bookId: loan.bookId,
+          bookTitle: loan.Book.title,
+          bookAuthor: loan.Book.author,
+          bookCategory: loan.Book.category,
+          bookImage: loan.Book.image,
+          borrowDate: loan.borrowDate,
+          dueDate: loan.dueDate,
+          status: loan.status,
+        }))
+        .slice(0, 5), // Return only 5 most recent loans
+    };
+
+    res.status(200).json(userStats);
+  } catch (error) {
+    console.error("Error getting user dashboard stats:", error);
     res
       .status(500)
-      .json({
-        message: "Error retrieving user statistics",
-        error: error.message,
-      });
+      .json({ message: "Error retrieving user dashboard statistics" });
   }
 };

@@ -1,98 +1,141 @@
 import React, { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, ChevronDown, Menu } from "lucide-react";
+import { useLogout, useGetProfile, getUserData } from "@/hooks/auth/useAuth";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const DashboardHeader = ({ fName, lName, role = "Student" }) => {
-  const [notificationCount, setNotificationCount] = useState(3);
+const DashboardHeader = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const logout = useLogout();
+
+  // Get user data using both methods for reliability
+  const { data: profileData, isLoading } = useGetProfile();
+  const cookieUserData = getUserData();
+
+  // Use profile data from API if available, otherwise fall back to cookie data
+  const userData = profileData || cookieUserData || {};
+  const { firstName, lastName, role, email } = userData;
+
+  // Format name for display
+  const displayName =
+    firstName && lastName
+      ? `${firstName} ${lastName}`
+      : email?.split("@")[0] || "User";
+
+  // Format initials for avatar
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`;
+    } else if (email) {
+      return email.substring(0, 2).toUpperCase();
+    }
+    return "U";
+  };
+
+  // Determine role text display
+  const roleDisplay = role === "admin" ? "Administrator" : role || "Student";
+
+  const handleLogout = () => {
+    logout();
+    setShowProfileMenu(false);
+  };
+
+  // Handle search submit
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    // Determine the correct route based on user role
+    const baseRoute = role === "admin" ? "/admin/dashboard" : "/dashboard";
+    const searchRoute = `${baseRoute}/search?q=${encodeURIComponent(
+      searchQuery.trim()
+    )}`;
+
+    router.push(searchRoute);
+  };
 
   return (
-    <header className="border-b border-b-[#CACACA]/50 px-8 py-4">
-      <div className="flex items-center justify-between">
+    <header className="sticky top-0 right-0 left-0 md:left-auto z-10 bg-white shadow-sm border-b border-gray-200">
+      <div className="px-4 md:px-8 py-3 flex items-center justify-between">
         {/* Welcome message */}
-        <div>
-          <h3 className="text-2xl font-semibold tracking-tighter">
-            Welcome back, {fName}
+        <div className="flex-1">
+          <h3 className="text-xl md:text-2xl font-semibold text-gray-800 capitalize">
+            Welcome back, {isLoading ? "..." : displayName}
           </h3>
-          <p className="text-sm font-semibold text-gray-500 tracking-tighter">
-            Here's what's up
+          <p className="text-xs md:text-sm text-gray-500 capitalize font-medium">
+            {roleDisplay}
           </p>
         </div>
 
         {/* Right side elements */}
-        <div className="flex items-center space-x-4">
-          {/* Search Bar */}
+        <div className="flex items-center space-x-2 md:space-x-4">
           <div className="relative hidden md:block">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search size={16} className="text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="text-gray-900 text-sm rounded-lg block w-64 pl-10 p-2.5 focus:outline-none focus:ring-2  border-[1px] focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Search books..."
-            />
+            <form onSubmit={handleSearchSubmit}>
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search size={16} className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-gray-900 text-sm rounded-lg block w-56 pl-10 p-2 
+                  border border-gray-300 focus:outline-none focus:ring-2 
+                  focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Search books..."
+              />
+            </form>
           </div>
 
-          {/* Notification Bell */}
-          {/* <div className="relative">
-            <button className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-full">
-              <Bell size={22} />
-              {notificationCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-500 rounded-full">
-                  {notificationCount}
-                </span>
-              )}
-            </button>
-          </div> */}
-
-          {/* Profile Picture */}
           <div className="relative">
             <button
-              className="flex items-center space-x-3 focus:outline-none"
+              className="flex items-center space-x-2 focus:outline-none"
               onClick={() => setShowProfileMenu(!showProfileMenu)}
             >
-              <div className="h-10 w-10 rounded-full purple bg-purple overflow-hidden flex items-center justify-center">
-                {fName.charAt(0)}
-                {lName.charAt(0)}
-
-                {/* <img
-                  src="/api/placeholder/40/40"
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                /> */}
+              <div
+                className="h-10 w-10 rounded-full bg-indigo-600 text-white 
+                flex items-center justify-center font-medium shadow-sm"
+              >
+                {isLoading ? "..." : getInitials()}
               </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-800">
-                  {fName} {lName}
-                </p>
-                <p className="text-xs text-gray-500">{role}</p>
-              </div>
-              {/* <ChevronDown
+              <ChevronDown
                 size={16}
-                className="hidden md:block text-gray-500"
-              /> */}
+                className={`hidden md:block text-gray-500 transition-transform duration-200 ${
+                  showProfileMenu ? "transform rotate-180" : ""
+                }`}
+              />
             </button>
 
             {/* Profile Dropdown */}
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-                <a
-                  href="#profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              <div
+                className="absolute right-0 mt-2 w-56 bg-white rounded-lg 
+                shadow-lg py-1 z-20 border border-gray-200"
+              >
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-medium text-gray-900">
+                    {displayName}
+                  </p>
+                  <p className="text-xs text-gray-500">{roleDisplay}</p>
+                </div>
+                <Link
+                  href={
+                    role === "admin"
+                      ? "/admin/dashboard/help"
+                      : "/dashboard/help"
+                  }
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Your Profile
-                </a>
-                <a
-                  href="#settings"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Settings
-                </a>
-                <a
-                  href="#logout"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  Help
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left block px-4 py-2 text-sm text-red-600 
+                    hover:bg-gray-50 transition-colors border-t border-gray-100 mt-1"
                 >
                   Logout
-                </a>
+                </button>
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ const { validationResult } = require("express-validator");
 exports.getAllBooks = async (req, res) => {
   try {
     const {
+      search, // New general search parameter
       title,
       author,
       category,
@@ -20,18 +21,31 @@ exports.getAllBooks = async (req, res) => {
     // Build filter conditions
     const whereConditions = {};
 
-    if (title) {
-      whereConditions.title = { [Op.like]: `%${title}%` };
+    // Handle general search across multiple fields
+    if (search) {
+      whereConditions[Op.or] = [
+        { title: { [Op.like]: `%${search}%` } },
+        { author: { [Op.like]: `%${search}%` } },
+        { isbn: { [Op.like]: `%${search}%` } },
+        { category: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+      ];
+    } else {
+      // Apply specific filters only if general search is not used
+      if (title) {
+        whereConditions.title = { [Op.like]: `%${title}%` };
+      }
+
+      if (author) {
+        whereConditions.author = { [Op.like]: `%${author}%` };
+      }
+
+      if (category) {
+        whereConditions.category = { [Op.like]: `%${category}%` };
+      }
     }
 
-    if (author) {
-      whereConditions.author = { [Op.like]: `%${author}%` };
-    }
-
-    if (category) {
-      whereConditions.category = { [Op.like]: `%${category}%` };
-    }
-
+    // Always apply availability filter if specified
     if (available === "true") {
       whereConditions.availableCopies = { [Op.gt]: 0 };
     } else if (available === "false") {

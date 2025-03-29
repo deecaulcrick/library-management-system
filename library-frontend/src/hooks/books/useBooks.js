@@ -1,20 +1,51 @@
 import { apiInstance } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { extractErrorMessage, formatValidationErrors } from "@/utils/errorHandler";
+import { useState, useEffect } from "react";
 
 // Query keys
 export const BOOKS_QUERY_KEY = ["books"];
+export const BOOK_SEARCH_QUERY_KEY = (query) => ["books", "search", query];
 export const BOOK_DETAIL_QUERY_KEY = (id) => ["books", id];
 export const BOOK_LOANS_QUERY_KEY = (id) => ["books", id, "loans"];
 
 // Get all books
-export const useGetAllBooks = () => {
+export const useGetAllBooks = (query = "") => {
   return useQuery({
-    queryKey: BOOKS_QUERY_KEY,
+    queryKey: query ? BOOK_SEARCH_QUERY_KEY(query) : BOOKS_QUERY_KEY,
     queryFn: async () => {
-      const response = await apiInstance.get("/books");
+      const response = await apiInstance.get("/books", {
+        params: query ? { search: query } : {},
+      });
       return response.data;
     },
+  });
+};
+
+// Search books with debounce
+export const useSearchBooks = (query = "", debounceMs = 500) => {
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, debounceMs);
+    
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [query, debounceMs]);
+  
+  return useQuery({
+    queryKey: BOOK_SEARCH_QUERY_KEY(debouncedQuery),
+    queryFn: async () => {
+      const response = await apiInstance.get("/books", {
+        params: { search: debouncedQuery },
+      });
+      return response.data;
+    },
+    enabled: debouncedQuery.length > 2, // Only search if query is at least 3 characters
   });
 };
 
@@ -35,18 +66,20 @@ export const useCreateBook = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (bookData) => {
-      const response = await apiInstance.post("/books", bookData);
+    mutationFn: async (newBook) => {
+      const response = await apiInstance.post("/books", newBook);
       return response.data;
     },
-    onSuccess: (data) => {
-      // Invalidate the books query to refetch the updated list
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY });
       toast.success("Book created successfully!");
     },
     onError: (error) => {
-      console.error("Failed to create book:", error.message);
-      toast.error(error.response?.data?.message || "Failed to create book");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
+      
+      // Return formatted validation errors to be used in form
+      return formatValidationErrors(error.response?.data);
     },
   });
 };
@@ -56,21 +89,20 @@ export const useUpdateBook = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...bookData }) => {
+    mutationFn: async ({ id, bookData }) => {
       const response = await apiInstance.put(`/books/${id}`, bookData);
       return response.data;
     },
-    onSuccess: (data, variables) => {
-      // Invalidate both the list and the specific book detail
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY });
-      queryClient.invalidateQueries({
-        queryKey: BOOK_DETAIL_QUERY_KEY(variables.id),
-      });
       toast.success("Book updated successfully!");
     },
     onError: (error) => {
-      console.error("Failed to update book:", error.message);
-      toast.error(error.response?.data?.message || "Failed to update book");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
+      
+      // Return formatted validation errors to be used in form
+      return formatValidationErrors(error.response?.data);
     },
   });
 };
@@ -84,16 +116,13 @@ export const useDeleteBook = () => {
       const response = await apiInstance.delete(`/books/${id}`);
       return response.data;
     },
-    onSuccess: (data, variables) => {
-      // Invalidate the books query to refetch the updated list
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY });
-      // Remove the specific book from the query cache
-      queryClient.removeQueries({ queryKey: BOOK_DETAIL_QUERY_KEY(variables) });
       toast.success("Book deleted successfully!");
     },
     onError: (error) => {
-      console.error("Failed to delete book:", error.message);
-      toast.error(error.response?.data?.message || "Failed to delete book");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
     },
   });
 };

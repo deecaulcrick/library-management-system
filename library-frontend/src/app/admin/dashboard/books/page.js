@@ -1,9 +1,8 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PlusIcon, X, Upload } from "lucide-react";
-import BookDetailsModal from "@/components/BookDetailsModal";
-import { CloudinaryUploadWidget } from "@/lib/cloudinary";
+import { PlusIcon, X, Upload, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   useGetAllBooks,
@@ -16,6 +15,36 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import FormInput from "@/components/form/FormInput";
 import FormTextarea from "@/components/form/FormTextarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+  DrawerDescription,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ImageUpload } from "@/components/Upload/ImageUpload";
+
+// No need for dynamic import as we're implementing the drawer directly in this file
 
 // Table style constants
 const tableHeaderClass = "py-3 px-4 text-left text-gray-500 font-medium";
@@ -55,6 +84,19 @@ const bookSchema = z.object({
 
 const Books = () => {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  const [enhancedUploadUrl, setEnhancedUploadUrl] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  // State for modals and drawers
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState(null);
 
   // Action button classes
   const viewButtonClass = "text-blue-500 hover:text-blue-700";
@@ -62,17 +104,10 @@ const Books = () => {
   const deleteButtonClass = "text-red-500 hover:text-red-700";
 
   // Hooks for API calls
-  const { data: booksData, isLoading, isError, error } = useGetAllBooks();
+  const { data: booksData, isLoading, isError, error } = useGetAllBooks(debouncedSearchTerm);
   const { mutate: createBook } = useCreateBook();
   const { mutate: updateBook } = useUpdateBook();
   const { mutate: deleteBook } = useDeleteBook();
-
-  // State for modals
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingBook, setEditingBook] = useState(null);
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   // React Hook Form for new book
   const {
@@ -82,6 +117,7 @@ const Books = () => {
     reset: resetNewForm,
     formState: { errors: newErrors },
     control: newControl,
+    watch: watchNew,
   } = useForm({
     resolver: zodResolver(bookSchema),
     defaultValues: {
@@ -108,27 +144,47 @@ const Books = () => {
     reset: resetEditForm,
     formState: { errors: editErrors },
     control: editControl,
+    watch: watchEdit,
   } = useForm({
     resolver: zodResolver(bookSchema),
   });
 
-  const handleImageUpload = (url) => {
-    setNewValue("image", url);
-  };
+  // Use this to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  const handleEditImageUpload = (url) => {
-    setEditValue("image", url);
-  };
+  // Search debounce effect
+  useEffect(() => {
+    // Debounce search to prevent excessive API calls
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const onSubmitNewBook = (data) => {
     try {
-      createBook(data, {
-        onSuccess: () => {
-          // Close modal and reset form
-          setIsModalOpen(false);
-          resetNewForm();
+      createBook(
+        {
+          ...data,
+          image: enhancedUploadUrl,
         },
-      });
+        {
+          onSuccess: () => {
+            // Close modal and reset form
+            setIsModalOpen(false);
+            resetNewForm();
+            toast.success("Book created successfully");
+          },
+          onError: (error) => {
+            toast.error(
+              "Failed to create book: " + (error?.message || "Unknown error")
+            );
+          },
+        }
+      );
     } catch (error) {
       console.error("Error creating book:", error);
       toast.error("Failed to create book");
@@ -137,6 +193,7 @@ const Books = () => {
 
   const openEditModal = (book) => {
     setEditingBook(book);
+    setEnhancedUploadUrl(book.image || ""); // Set the current image URL
 
     // Reset form with book data
     resetEditForm({
@@ -157,18 +214,37 @@ const Books = () => {
       shelfLocation: book.shelfLocation || "",
     });
 
+    // Manually set the id value to ensure it's available
+    setEditValue("id", book.id);
+
     setIsEditModalOpen(true);
   };
 
   const onSubmitEditBook = (data) => {
+    console.log("Updating book:", data);
     try {
-      updateBook(data, {
-        onSuccess: () => {
-          // Close modal and reset form
-          setIsEditModalOpen(false);
-          setEditingBook(null);
+      updateBook(
+        {
+          id: editingBook.id,
+          bookData: {
+            ...data,
+            image: enhancedUploadUrl || data.image,
+          },
         },
-      });
+        {
+          onSuccess: () => {
+            // Close modal and reset form
+            setIsEditModalOpen(false);
+            setEditingBook(null);
+            toast.success("Book updated successfully");
+          },
+          onError: (error) => {
+            toast.error(
+              "Failed to update book: " + (error?.message || "Unknown error")
+            );
+          },
+        }
+      );
     } catch (error) {
       console.error("Error updating book:", error);
       toast.error("Failed to update book");
@@ -176,25 +252,48 @@ const Books = () => {
   };
 
   const handleDeleteBook = async (bookId) => {
-    if (confirm("Are you sure you want to delete this book?")) {
-      try {
-        deleteBook(bookId);
-      } catch (error) {
-        console.error("Error deleting book:", error);
-        toast.error("Failed to delete book");
-      }
+    try {
+      deleteBook(bookId, {
+        onSuccess: () => {
+          toast.success("Book deleted successfully");
+          setIsDeleteAlertOpen(false);
+          setBookToDelete(null);
+        },
+        onError: (error) => {
+          toast.error(
+            "Failed to delete book: " + (error?.message || "Unknown error")
+          );
+        },
+      });
+    } catch (error) {
+      console.error("Error deleting book:", error);
+      toast.error("Failed to delete book");
     }
+  };
+
+  const openDeleteConfirmation = (book) => {
+    setBookToDelete(book);
+    setIsDeleteAlertOpen(true);
   };
 
   const handleViewBook = (book) => {
     setSelectedBook(book);
-    setIsViewModalOpen(true);
+    setIsViewDrawerOpen(true);
   };
 
-  const closeModal = () => {
-    setIsViewModalOpen(false);
+  const closeDrawer = () => {
+    setIsViewDrawerOpen(false);
     setTimeout(() => setSelectedBook(null), 300); // After animation completes
   };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // If not mounted yet, return a simple loading state to prevent hydration issues
+  if (!isMounted) {
+    return <div className="p-8">Loading books...</div>;
+  }
 
   return (
     <section>
@@ -232,7 +331,9 @@ const Books = () => {
           <input
             type="text"
             className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full"
-            placeholder="Search by name or ID..."
+            placeholder="Search by title, author, ISBN or category..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
         </div>
         <div className="w-64">
@@ -289,7 +390,7 @@ const Books = () => {
                   </td>
                   <td className={tableCellClass}>{book.availableCopies}</td>
                   <td className={tableCellClass}>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-6">
                       <button
                         onClick={() => handleViewBook(book)}
                         className={viewButtonClass}
@@ -303,7 +404,7 @@ const Books = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteBook(book.id)}
+                        onClick={() => openDeleteConfirmation(book)}
                         className={deleteButtonClass}
                       >
                         Delete
@@ -318,309 +419,426 @@ const Books = () => {
       </div>
 
       {/* New Book Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Add New Book</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <form onSubmit={handleNewSubmit(onSubmitNewBook)}>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <FormInput
-                  id="title"
-                  name="title"
-                  label="Title*"
-                  register={registerNew}
-                  errors={newErrors}
-                  validation={{ required: "Title is required" }}
-                />
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Book</DialogTitle>
+            <DialogDescription>
+              Fill out the form below to add a new book to the catalog.
+            </DialogDescription>
+          </DialogHeader>
 
-                <FormInput
-                  id="author"
-                  name="author"
-                  label="Author*"
-                  register={registerNew}
-                  errors={newErrors}
-                  validation={{ required: "Author is required" }}
-                />
-
-                <FormInput
-                  id="isbn"
-                  name="isbn"
-                  label="ISBN*"
-                  register={registerNew}
-                  errors={newErrors}
-                  validation={{ required: "ISBN is required" }}
-                />
-
-                <FormInput
-                  id="category"
-                  name="category"
-                  label="Category"
-                  register={registerNew}
-                  errors={newErrors}
-                />
-
-                <FormInput
-                  id="publisher"
-                  name="publisher"
-                  label="Publisher"
-                  register={registerNew}
-                  errors={newErrors}
-                />
-
-                <FormInput
-                  id="publishedDate"
-                  name="publishedDate"
-                  label="Published Date"
-                  type="date"
-                  register={registerNew}
-                  errors={newErrors}
-                />
-
-                <FormInput
-                  id="totalCopies"
-                  name="totalCopies"
-                  label="Total Copies"
-                  type="number"
-                  register={registerNew}
-                  errors={newErrors}
-                  validation={{
-                    min: { value: 1, message: "Must have at least 1 copy" },
-                  }}
-                />
-
-                <FormInput
-                  id="shelfLocation"
-                  name="shelfLocation"
-                  label="Shelf Location"
-                  register={registerNew}
-                  errors={newErrors}
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Book Cover Image
-                </label>
-                <div className="flex items-center space-x-4">
-                  <input type="hidden" {...registerNew("image")} />
-                  {/* Display image preview if available */}
-                  <div
-                    className={`w-24 h-32 bg-cover bg-center border border-gray-300 rounded-md ${
-                      !registerNew("image").value && "hidden"
-                    }`}
-                    style={{
-                      backgroundImage: `url(${registerNew("image").value})`,
-                    }}
-                  ></div>
-                  <CloudinaryUploadWidget onUpload={handleImageUpload}>
-                    {({ open }) => (
-                      <button
-                        type="button"
-                        onClick={open}
-                        className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {registerNew("image").value
-                          ? "Change Image"
-                          : "Upload Image"}
-                      </button>
-                    )}
-                  </CloudinaryUploadWidget>
-                </div>
-              </div>
-
-              <FormTextarea
-                id="description"
-                name="description"
-                label="Description"
-                rows={3}
+          <form
+            onSubmit={handleNewSubmit(onSubmitNewBook)}
+            className="space-y-4 py-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormInput
+                id="title"
+                name="title"
+                label="Title*"
                 register={registerNew}
                 errors={newErrors}
-                className="mb-4"
+                validation={{ required: "Title is required" }}
               />
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md mr-2 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
-                >
-                  Add Book
-                </button>
+              <FormInput
+                id="author"
+                name="author"
+                label="Author*"
+                register={registerNew}
+                errors={newErrors}
+                validation={{ required: "Author is required" }}
+              />
+
+              <FormInput
+                id="isbn"
+                name="isbn"
+                label="ISBN*"
+                register={registerNew}
+                errors={newErrors}
+                validation={{ required: "ISBN is required" }}
+              />
+
+              <FormInput
+                id="category"
+                name="category"
+                label="Category"
+                register={registerNew}
+                errors={newErrors}
+              />
+
+              <FormInput
+                id="publisher"
+                name="publisher"
+                label="Publisher"
+                register={registerNew}
+                errors={newErrors}
+              />
+
+              <FormInput
+                id="publishedDate"
+                name="publishedDate"
+                type="date"
+                label="Published Date"
+                register={registerNew}
+                errors={newErrors}
+              />
+
+              <FormInput
+                id="quantity"
+                name="quantity"
+                type="number"
+                label="Quantity*"
+                register={registerNew}
+                errors={newErrors}
+                validation={{ required: "Quantity is required" }}
+              />
+
+              <FormInput
+                id="shelfLocation"
+                name="shelfLocation"
+                label="Shelf Location"
+                register={registerNew}
+                errors={newErrors}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Book Cover Image
+              </label>
+
+              <div className="p-6 border rounded-lg shadow-sm">
+                <ImageUpload
+                  onUpload={(url) => setEnhancedUploadUrl(url)}
+                  maxSizeMB={5}
+                  allowedFormats={["jpg", "jpeg", "png", "webp"]}
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <FormTextarea
+              id="description"
+              name="description"
+              label="Description"
+              rows={3}
+              register={registerNew}
+              errors={newErrors}
+            />
+
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md mr-2 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+              >
+                Add Book
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Book Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Edit Book</h2>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-6 w-6" />
-              </button>
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Book</DialogTitle>
+            <DialogDescription>
+              Update the book information below.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={handleEditSubmit(onSubmitEditBook)}
+            className="space-y-4 py-4"
+          >
+            <input type="hidden" {...registerEdit("id")} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormInput
+                id="edit-title"
+                name="title"
+                label="Title*"
+                register={registerEdit}
+                errors={editErrors}
+                validation={{ required: "Title is required" }}
+              />
+
+              <FormInput
+                id="edit-author"
+                name="author"
+                label="Author*"
+                register={registerEdit}
+                errors={editErrors}
+                validation={{ required: "Author is required" }}
+              />
+
+              <FormInput
+                id="edit-isbn"
+                name="isbn"
+                label="ISBN*"
+                register={registerEdit}
+                errors={editErrors}
+                validation={{ required: "ISBN is required" }}
+              />
+
+              <FormInput
+                id="edit-category"
+                name="category"
+                label="Category"
+                register={registerEdit}
+                errors={editErrors}
+              />
+
+              <FormInput
+                id="edit-publisher"
+                name="publisher"
+                label="Publisher"
+                register={registerEdit}
+                errors={editErrors}
+              />
+
+              <FormInput
+                id="edit-publishedDate"
+                name="publishedDate"
+                type="date"
+                label="Published Date"
+                register={registerEdit}
+                errors={editErrors}
+              />
+
+              <FormInput
+                id="edit-quantity"
+                name="quantity"
+                type="number"
+                label="Quantity*"
+                register={registerEdit}
+                errors={editErrors}
+                validation={{ required: "Quantity is required" }}
+              />
+
+              <FormInput
+                id="edit-shelfLocation"
+                name="shelfLocation"
+                label="Shelf Location"
+                register={registerEdit}
+                errors={editErrors}
+              />
             </div>
-            <form onSubmit={handleEditSubmit(onSubmitEditBook)}>
-              <input type="hidden" {...registerEdit("id")} />
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <FormInput
-                  id="edit-title"
-                  name="title"
-                  label="Title*"
-                  register={registerEdit}
-                  errors={editErrors}
-                  validation={{ required: "Title is required" }}
-                />
 
-                <FormInput
-                  id="edit-author"
-                  name="author"
-                  label="Author*"
-                  register={registerEdit}
-                  errors={editErrors}
-                  validation={{ required: "Author is required" }}
-                />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Book Cover Image
+              </label>
 
-                <FormInput
-                  id="edit-isbn"
-                  name="isbn"
-                  label="ISBN*"
-                  register={registerEdit}
-                  errors={editErrors}
-                  validation={{ required: "ISBN is required" }}
-                />
-
-                <FormInput
-                  id="edit-category"
-                  name="category"
-                  label="Category"
-                  register={registerEdit}
-                  errors={editErrors}
-                />
-
-                <FormInput
-                  id="edit-publisher"
-                  name="publisher"
-                  label="Publisher"
-                  register={registerEdit}
-                  errors={editErrors}
-                />
-
-                <FormInput
-                  id="edit-publishedDate"
-                  name="publishedDate"
-                  label="Published Date"
-                  type="date"
-                  register={registerEdit}
-                  errors={editErrors}
-                />
-
-                <FormInput
-                  id="edit-totalCopies"
-                  name="totalCopies"
-                  label="Total Copies"
-                  type="number"
-                  register={registerEdit}
-                  errors={editErrors}
-                  validation={{
-                    min: { value: 1, message: "Must have at least 1 copy" },
-                  }}
-                />
-
-                <FormInput
-                  id="edit-shelfLocation"
-                  name="shelfLocation"
-                  label="Shelf Location"
-                  register={registerEdit}
-                  errors={editErrors}
+              <div className="p-6 border rounded-lg shadow-sm">
+                <ImageUpload
+                  onUpload={(url) => setEnhancedUploadUrl(url)}
+                  maxSizeMB={5}
+                  allowedFormats={["jpg", "jpeg", "png", "webp"]}
                 />
               </div>
+            </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Book Cover Image
-                </label>
-                <div className="flex items-center space-x-4">
-                  <input type="hidden" {...registerEdit("image")} />
-                  {/* Display image preview if available */}
-                  {registerEdit("image").value && (
-                    <div
-                      className="w-24 h-32 bg-cover bg-center border border-gray-300 rounded-md"
-                      style={{
-                        backgroundImage: `url(${registerEdit("image").value})`,
-                      }}
-                    ></div>
-                  )}
-                  <CloudinaryUploadWidget onUpload={handleEditImageUpload}>
-                    {({ open }) => (
-                      <button
-                        type="button"
-                        onClick={open}
-                        className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {registerEdit("image").value
-                          ? "Change Image"
-                          : "Upload Image"}
-                      </button>
-                    )}
-                  </CloudinaryUploadWidget>
+            <FormTextarea
+              id="edit-description"
+              name="description"
+              label="Description"
+              rows={3}
+              register={registerEdit}
+              errors={editErrors}
+            />
+
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md mr-2 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+              >
+                Update Book
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the book &quot;{bookToDelete?.title}
+              &quot; from the library system. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bookToDelete && handleDeleteBook(bookToDelete.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Book Details Drawer */}
+      <Drawer
+        open={isViewDrawerOpen}
+        onOpenChange={setIsViewDrawerOpen}
+        direction="right"
+      >
+        <DrawerContent className="sm:max-w-md max-h-[100vh] overflow-y-auto">
+          {selectedBook && (
+            <div className="p-6">
+              <DrawerHeader>
+                <div className="flex justify-between items-center">
+                  <DrawerTitle className="text-2xl font-bold">
+                    {selectedBook.title}
+                  </DrawerTitle>
+                  <DrawerClose className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200">
+                    <X className="h-4 w-4" />
+                  </DrawerClose>
+                </div>
+              </DrawerHeader>
+
+              <div className="mt-6">
+                <div className="flex flex-col items-center mb-8">
+                  <div
+                    className="w-48 h-64 rounded-md mb-4 bg-cover bg-center shadow-md"
+                    style={{
+                      backgroundImage: `url(${
+                        selectedBook.image || "/assets/bookimg.png"
+                      })`,
+                    }}
+                  ></div>
+                  <span className={getStatusBadgeClass(selectedBook.status)}>
+                    {selectedBook.status}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Author
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.author}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Category
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.category || "Uncategorized"}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        ISBN
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.isbn}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Publisher
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.publisher || "Unknown"}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Published Date
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.publishedDate
+                          ? new Date(
+                              selectedBook.publishedDate
+                            ).toLocaleDateString()
+                          : "Unknown"}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Shelf Location
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.shelfLocation || "Not specified"}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Total Copies
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.totalCopies || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Available Copies
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedBook.availableCopies || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">
+                      Description
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {selectedBook.description || "No description available."}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <FormTextarea
-                id="edit-description"
-                name="description"
-                label="Description"
-                rows={3}
-                register={registerEdit}
-                errors={editErrors}
-                className="mb-4"
-              />
-
-              <div className="flex justify-end">
+              <DrawerFooter className="mt-8 border-t pt-4 flex flex-row justify-between">
                 <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md mr-2 hover:bg-gray-50"
+                  onClick={() => {
+                    setIsViewDrawerOpen(false);
+                    setTimeout(() => openEditModal(selectedBook), 300);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  Cancel
+                  Edit Book
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+                  onClick={() => {
+                    setIsViewDrawerOpen(false);
+                    setTimeout(() => openDeleteConfirmation(selectedBook), 300);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
-                  Update Book
+                  Delete Book
                 </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isViewModalOpen && selectedBook && (
-        <BookDetailsModal book={selectedBook} onClose={closeModal} />
-      )}
+              </DrawerFooter>
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
     </section>
   );
 };

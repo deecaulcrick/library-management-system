@@ -14,13 +14,14 @@ const SignupForm = () => {
   const router = useRouter();
   const { isAuthenticated, isInitialized } = useIsAuthenticated();
   const [isAdminRegistration, setIsAdminRegistration] = useState(false);
-  
+
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
     reset,
+    setValue,
   } = useForm({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -32,22 +33,33 @@ const SignupForm = () => {
     },
   });
 
-  // Watch password for confirmation validation (not needed with Zod schema but kept for reference)
-  const password = watch("password");
-
   const { mutate: registerUser, isLoading, isError, error } = useRegister();
+
+  // Update role when registration type changes
+  useEffect(() => {
+    setValue("role", isAdminRegistration ? "admin" : "student");
+  }, [isAdminRegistration, setValue]);
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
-      router.push("/dashboard");
+      const userData = JSON.parse(localStorage.getItem("library_user") || "{}");
+      if (userData.role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     }
   }, [isInitialized, isAuthenticated, router]);
 
   const onSubmit = (data) => {
     // Remove confirmPassword before sending to API
     const { confirmPassword, ...userData } = data;
-    registerUser(userData);
+    // Add isAdmin flag to indicate admin registration context
+    registerUser({
+      ...userData,
+      isAdmin: isAdminRegistration,
+    });
   };
 
   // Get role options based on registration type
@@ -57,7 +69,7 @@ const SignupForm = () => {
     } else {
       return [
         { value: "student", label: "Student" },
-        { value: "staff", label: "Staff" }
+        { value: "staff", label: "Staff" },
       ];
     }
   };
@@ -153,7 +165,9 @@ const SignupForm = () => {
         {isAdminRegistration && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-sm text-yellow-700">
-              <strong>Note:</strong> Admin accounts have full access to the system, including user management, book catalog administration, and reporting features.
+              <strong>Note:</strong> Admin accounts have full access to the
+              system, including user management, book catalog administration,
+              and reporting features.
             </p>
           </div>
         )}
@@ -164,7 +178,9 @@ const SignupForm = () => {
             disabled={isLoading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Creating account..." : `Register as ${isAdminRegistration ? 'Admin' : 'User'}`}
+            {isLoading
+              ? "Creating account..."
+              : `Register as ${isAdminRegistration ? "Admin" : "User"}`}
           </button>
         </div>
       </form>
@@ -182,7 +198,10 @@ const SignupForm = () => {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link
+              href="/login"
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
               Sign in
             </Link>
           </p>

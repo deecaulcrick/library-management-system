@@ -3,7 +3,7 @@ import { useState } from "react";
 import SideBar from "@/components/SideBar";
 import DashboardHeader from "@/components/DashboardHeader";
 
-const layout = ({ children }) => {
+const DashboardLayout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleSidebarToggle = (collapsed) => {
@@ -11,20 +11,21 @@ const layout = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen ">
-      <SideBar onToggle={handleSidebarToggle} />
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      <SideBar 
+        onToggle={handleSidebarToggle} 
+        isAdmin={false}
+      />
       <div
-        className={`
-          flex-1 overflow-auto transition-all duration-300
-          ${sidebarCollapsed ? "md:ml-20" : "md:ml-64"}
-        `}
+        className={`transition-all duration-300 ${
+          sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+        }`}
       >
-        <DashboardHeader fName="Dee" lName="Caulcrick" />
-
-        <main className="flex-1 overflow-auto p-8">{children}</main>
+        <DashboardHeader />
+        <main className="p-4 md:p-8 pt-4">{children}</main>
       </div>
     </div>
   );
 };
 
-export default layout;
+export default DashboardLayout;

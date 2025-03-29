@@ -2,21 +2,21 @@ const express = require("express");
 const dashboardController = require("../controllers/dashboard.controller");
 const {
   verifyToken,
-  isStaffOrAdmin,
+  isAdmin,
 } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
-// All dashboard routes are protected for staff and admin only
-router.use(verifyToken, isStaffOrAdmin);
+// Admin dashboard routes - protected with admin verification
+router.get("/admin/stats", verifyToken, isAdmin, dashboardController.getDashboardStats);
+router.get("/admin/books", verifyToken, isAdmin, dashboardController.getBookStats);
+router.get("/admin/users", verifyToken, isAdmin, dashboardController.getUserStats);
 
-// Get dashboard statistics
-router.get("/stats", dashboardController.getDashboardStats);
-
-// Get book statistics
-router.get("/books", dashboardController.getBookStats);
-
-// Get user statistics
-router.get("/users", dashboardController.getUserStats);
+// User dashboard route - any authenticated user can access their own stats
+router.get(
+  "/user/:userId?",
+  verifyToken,
+  dashboardController.getUserDashboardStats
+);
 
 module.exports = router;

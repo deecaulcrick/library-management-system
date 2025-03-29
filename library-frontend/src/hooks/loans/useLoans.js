@@ -58,10 +58,14 @@ export const useReturnBook = () => {
       const response = await apiInstance.put(`/loans/${loanId}/return`);
       return response.data;
     },
-    onSuccess: (data) => {
-      // Invalidate the loans query to refetch the updated list
+    onSuccess: (data, loanId, context) => {
+      // Invalidate all loan-related queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY });
-      toast.success("Book returned successfully!");
+      
+      // Also invalidate user-specific loans query (all user IDs to be safe)
+      queryClient.invalidateQueries({ queryKey: ["userLoans"] });
+      
+      // Don't show toast here, we'll handle it in the component
     },
     onError: (error) => {
       console.error("Failed to return book:", error.message);

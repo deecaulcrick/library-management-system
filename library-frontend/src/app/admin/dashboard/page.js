@@ -1,33 +1,55 @@
-import Book from "@/components/Book";
-import RecentActivity from "@/components/RecentActivity";
+import DashboardStats from "@/components/admin/DashboardStats";
+import RecentLoans from "@/components/admin/RecentLoans";
 import Link from "next/link";
+import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import PopularBooks from "@/components/admin/PopularBooks";
+import UserStats from "@/components/admin/UserStats";
 
 const Page = () => {
   return (
-    <section className="">
+    <section className="space-y-6">
       <div>
-        <div className="">
-          <h1 className="h1 gradient-text">Dashboard</h1>
-          <div className="">
-            <RecentActivity />
-          </div>
-        </div>
-        <div className="mt-10">
-          <div className="flex items-end justify-between">
-            <h2 className="h2">Borrowed books</h2>
+        <h1 className="h1 gradient-text mb-6">Admin Dashboard</h1>
+
+        {/* Dashboard statistics */}
+        <DashboardStats />
+
+        <UserStats />
+
+        {/* Recent loan activity with link to full loans management */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Recent Loan Activity</h2>
             <Link
-              href="/dashboard/loans"
-              className="font-medium text-[#FF5B2F] underline text-sm"
+              href="/admin/dashboard/loans"
+              className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
             >
-              See all
+              Manage All Loans
+              <ArrowRightIcon className="w-4 h-4 ml-1" />
             </Link>
           </div>
-          <div className="flex gap-4 mt-4 overflow-x-scroll">
-            <Book />
-            <Book />
-            <Book />
-            <Book />
+          <RecentLoans />
+        </div>
+
+        {/* Popular books section */}
+        <PopularBooks />
+
+        {/* User management link */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">User Management</h2>
+            <Link
+              href="/admin/dashboard/students"
+              className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Manage All Users
+              <ArrowRightIcon className="w-4 h-4 ml-1" />
+            </Link>
           </div>
+          <p className="text-gray-600 mt-2">
+            Access the user management panel to view, edit, and manage student
+            accounts.
+          </p>
         </div>
       </div>
     </section>

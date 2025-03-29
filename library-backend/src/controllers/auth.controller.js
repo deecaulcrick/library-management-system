@@ -121,6 +121,121 @@ exports.login = async (req, res) => {
   }
 };
 
+// Admin Login - specifically for admin users
+exports.adminLogin = async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid admin credentials" });
+    }
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid admin credentials" });
+    }
+
+    // Check if user is an admin
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied. Admin privileges required." });
+    }
+
+    // Generate JWT token with admin role
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: 'admin' },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+
+    // Return admin user data without password
+    const userData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: 'admin',
+      createdAt: user.createdAt,
+    };
+
+    res.status(200).json({
+      message: "Admin login successful",
+      user: userData,
+      token,
+    });
+  } catch (error) {
+    console.error("Admin login error:", error);
+    res.status(500).json({ message: "Error logging in as admin", error: error.message });
+  }
+};
+
+// Admin registration - creates an admin user
+exports.adminRegister = async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { name, email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "User already exists with this email" });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create new admin user
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'admin', // Force role to be admin
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: 'admin' },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+
+    // Return user data without password
+    const userData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: 'admin',
+      createdAt: user.createdAt,
+    };
+
+    res.status(201).json({
+      message: "Admin user registered successfully",
+      user: userData,
+      token,
+    });
+  } catch (error) {
+    console.error("Admin registration error:", error);
+    res
+      .status(500)
+      .json({ message: "Error registering admin user", error: error.message });
+  }
+};
+
 // Get current user profile
 exports.getProfile = async (req, res) => {
   try {

@@ -5,7 +5,7 @@ import { ErrorMessage } from "@hookform/error-message";
 
 /**
  * Reusable form input component for text, email, number, etc.
- * 
+ *
  * @param {Object} props - Component props
  * @param {string} props.id - Input ID
  * @param {string} props.label - Input label
@@ -34,7 +34,10 @@ const FormInput = ({
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           {label}
         </label>
       )}
@@ -44,11 +47,11 @@ const FormInput = ({
           type={type}
           placeholder={placeholder}
           disabled={disabled}
-          className={`appearance-none block w-full px-3 py-2 border ${
-            errors && errors[name] 
-              ? "border-red-500 focus:ring-red-500 focus:border-red-500" 
+          className={`appearance-none block w-full px-3 py-2.5 border ${
+            errors && errors[name]
+              ? "border-red-500 focus:ring-red-500 focus:border-red-500"
               : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-          } rounded-md shadow-sm placeholder-gray-400 focus:outline-none`}
+          } rounded-md placeholder-gray-400 focus:outline-none`}
           {...register(name, validation)}
           {...rest}
         />

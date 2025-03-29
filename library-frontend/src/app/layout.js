@@ -2,6 +2,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { QueryProvider } from "@/providers/QueryProvider";
 import "@/theme/globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import NextTopLoader from "nextjs-toploader";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -17,7 +18,8 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={` ${plusJakartaSans.className} antialiased`}>
+      <body className={` antialiased`} suppressHydrationWarning={true}>
+        <NextTopLoader color="#0045f6" />
         <QueryProvider>
           {children}
           <Toaster />

@@ -1,3 +1,5 @@
+"use client";
+
 import { apiInstance } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -28,8 +30,11 @@ export const setAuthToken = (token) => {
 export const setUserData = (userData) => {
   if (userData) {
     Cookies.set(AUTH_USER_KEY, JSON.stringify(userData), { expires: 7 });
+    // Also store in localStorage for easier access in client components
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
   } else {
     Cookies.remove(AUTH_USER_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
   }
 };
 
@@ -56,21 +61,37 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: async (credentials) => {
-      const response = await apiInstance.post("/auth/login", credentials);
-      return response.data;
+      // Extract isAdmin flag from credentials
+      const { isAdmin, ...loginData } = credentials;
+
+      // Determine the endpoint based on whether this is an admin login
+      const endpoint = isAdmin ? "/auth/admin/login" : "/auth/login";
+
+      const response = await apiInstance.post(endpoint, loginData);
+      return {
+        ...response.data,
+        isAdminLogin: isAdmin, // Pass this flag through for context
+      };
     },
     onSuccess: (data) => {
       // Set auth token and user data
       setAuthToken(data.token);
       setUserData(data.user);
-      
+
       // Invalidate auth query to update isAuthenticated status
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      
-      toast.success("Login successful!");
-      
-      // Redirect to dashboard
-      router.push("/dashboard");
+
+      const message = data.isAdminLogin
+        ? "Admin login successful!"
+        : "Login successful!";
+      toast.success(message);
+
+      // Redirect based on user role
+      if (data.user.role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     },
     onError: (error) => {
       console.error("Login failed:", error.message);
@@ -86,21 +107,37 @@ export const useRegister = () => {
 
   return useMutation({
     mutationFn: async (userData) => {
-      const response = await apiInstance.post("/auth/register", userData);
-      return response.data;
+      // Extract isAdmin flag from userData
+      const { isAdmin, ...registrationData } = userData;
+
+      // Determine the endpoint based on whether this is an admin registration
+      const endpoint = isAdmin ? "/auth/admin/register" : "/auth/register";
+
+      const response = await apiInstance.post(endpoint, registrationData);
+      return {
+        ...response.data,
+        isAdminRegistration: isAdmin, // Pass this flag through for context
+      };
     },
     onSuccess: (data) => {
       // Set auth token and user data
       setAuthToken(data.token);
       setUserData(data.user);
-      
+
       // Invalidate auth query to update isAuthenticated status
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      
-      toast.success("Registration successful!");
-      
-      // Redirect to dashboard
-      router.push("/dashboard");
+
+      const message = data.isAdminRegistration
+        ? "Admin registration successful!"
+        : "Registration successful!";
+      toast.success(message);
+
+      // Redirect based on user role
+      if (data.user.role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     },
     onError: (error) => {
       console.error("Registration failed:", error.message);
@@ -118,12 +155,12 @@ export const useLogout = () => {
     // Clear auth token and user data
     setAuthToken(null);
     setUserData(null);
-    
+
     // Invalidate auth query to update isAuthenticated status
     queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-    
+
     toast.success("Logged out successfully");
-    
+
     // Redirect to login page
     router.push("/login");
   };
@@ -133,7 +170,7 @@ export const useLogout = () => {
 export const useIsAuthenticated = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   useEffect(() => {
     // Initialize auth state from cookies
     const authInitialized = initializeAuth();
@@ -147,7 +184,7 @@ export const useIsAuthenticated = () => {
 // Get current user profile
 export const useGetProfile = () => {
   const { isAuthenticated } = useIsAuthenticated();
-  
+
   return useQuery({
     queryKey: AUTH_QUERY_KEY,
     queryFn: async () => {

@@ -247,6 +247,7 @@ exports.returnBook = async (req, res) => {
       include: [
         {
           model: Book,
+          attributes: ["id", "title", "author", "isbn", "category", "image"],
         },
         {
           model: User,
@@ -280,15 +281,22 @@ exports.returnBook = async (req, res) => {
     loan.returnDate = new Date();
     await loan.save();
 
-    // Update book available copies
-    const book = loan.Book;
-    book.availableCopies += 1;
-    await book.save();
+    // Update book available copies - fetch the full book record to ensure we have all properties
+    const bookId = loan.Book.id;
+    const bookRecord = await Book.findByPk(bookId);
+    
+    if (!bookRecord) {
+      return res.status(404).json({ message: "Book record not found" });
+    }
+    
+    // Ensure availableCopies is a number before incrementing
+    bookRecord.availableCopies = (bookRecord.availableCopies || 0) + 1;
+    await bookRecord.save();
 
     // Check for pending reservations for this book
     const pendingReservation = await Reservation.findOne({
       where: {
-        bookId: book.id,
+        bookId: bookRecord.id,
         status: "pending",
       },
       order: [["reservationDate", "ASC"]],
@@ -309,7 +317,7 @@ exports.returnBook = async (req, res) => {
       await emailService.sendReservationFulfilledEmail(
         pendingReservation.User.email,
         pendingReservation.User.name,
-        book.title
+        bookRecord.title
       );
     }
 
@@ -400,7 +408,7 @@ exports.getUserActiveLoans = async (req, res) => {
       include: [
         {
           model: Book,
-          attributes: ["id", "title", "author", "isbn", "category"],
+          attributes: ["id", "title", "author", "isbn", "category", "image"],
         },
       ],
       order: [["borrowDate", "DESC"]],

@@ -19,6 +19,19 @@ router.post(
   authController.register
 );
 
+// Admin Register - specifically for creating admin users
+router.post(
+  "/admin/register",
+  [
+    body("name").notEmpty().withMessage("Name is required"),
+    body("email").isEmail().withMessage("Please provide a valid email"),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters long"),
+  ],
+  authController.adminRegister
+);
+
 // Login user
 router.post(
   "/login",
@@ -27,6 +40,16 @@ router.post(
     body("password").notEmpty().withMessage("Password is required"),
   ],
   authController.login
+);
+
+// Admin Login (specifically for admin users)
+router.post(
+  "/admin/login",
+  [
+    body("email").isEmail().withMessage("Please provide a valid email"),
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
+  authController.adminLogin
 );
 
 // Get current user profile (protected route)

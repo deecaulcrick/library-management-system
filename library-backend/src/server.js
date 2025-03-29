@@ -14,8 +14,15 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 // Initialize express app
 const app = express();
 
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -78,6 +85,7 @@ const startServer = async () => {
       console.log(`Server is running on port ${PORT}`);
       console.log(`Environment: ${config.nodeEnv}`);
       console.log(`Database: SQLite (file-based database)`);
+      console.log("CORS: Enabled for all origins");
     });
   } catch (error) {
     console.error("Failed to start server:", error);
