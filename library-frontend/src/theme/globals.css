@@ -255,4 +255,7 @@
   .gradient-text {
     @apply bg-gradient-to-b from-black to-[#666666] text-transparent bg-clip-text;
   }
+  .button {
+    @apply flex items-center bg-black font-semibold text-white px-4 py-2 rounded-md hover:bg-slate-900 transition duration-300 ease-in-out;
+  }
 }

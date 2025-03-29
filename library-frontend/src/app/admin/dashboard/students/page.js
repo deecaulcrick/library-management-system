@@ -7,7 +7,7 @@ const page = () => {
       id: "B12345",
       name: "Nifemi Onalaja",
       email: "nifemio@gmail.com",
-      status: "Active",
+      status: "Suspended",
       lastActive: "26th March 2025",
       image: "/assets/bookimg.png",
     },
@@ -75,7 +75,7 @@ const page = () => {
                     className={`px-3 py-1 text-sm rounded-full ${
                       student.status === "Active"
                         ? "bg-black text-white"
-                        : "bg-white text-black"
+                        : "bg-gray-100 text-black"
                     }`}
                   >
                     {student.status}

@@ -36,7 +36,7 @@ function BookDetailsModal({ isOpen, onClose, book }) {
       >
         {/* Modal */}
         <div
-          className={`fixed top-0 right-0 h-full w-100 max-w-full bg-white shadow-lg overflow-auto z-50 transition-transform duration-300 transform ${
+          className={`fixed top-0 right-0 h-full w-100 max-w-full bg-white shadow-lg overflow-auto z-50 transition-transform duration-500 transform ease-in-out ${
             isOpen ? "translate-x-0" : "translate-x-full"
           }`}
           onClick={handleModalClick}
